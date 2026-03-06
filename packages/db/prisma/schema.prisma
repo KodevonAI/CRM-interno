@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  AGENT
+  AI_AGENT
+}
+
+enum LeadStage {
+  NUEVO
+  CONTACTADO
+  CALIFICADO
+  PROPUESTA
+  NEGOCIACION
+  CERRADO_GANADO
+  CERRADO_PERDIDO
+}
+
+enum ScoreLabel {
+  COLD
+  WARM
+  HOT
+}
+
+enum Channel {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  EMAIL
+  FORM
+  API
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  PENDING
+}
+
+enum NotificationType {
+  NEW_LEAD
+  HOT_LEAD
+  NEW_MESSAGE
+  DUPLICATE_DETECTED
+  MERGE_SUGGESTION
+}
+
+// ─── Models ───────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(AGENT)
+  isActive     Boolean  @default(true) @map("is_active")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignedLeads Lead[]         @relation("AssignedAgent")
+  apiKeys       ApiKey[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Lead {
+  id            String     @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  company       String?
+  sourceChannel Channel    @map("source_channel")
+  stage         LeadStage  @default(NUEVO)
+  score         Int        @default(0)
+  scoreLabel    ScoreLabel @default(COLD) @map("score_label")
+  espocrmId     String?    @map("espocrm_id")
+  assignedToId  String?    @map("assigned_to_id")
+  notes         String?
+  metadata      Json?
+  isDuplicate   Boolean    @default(false) @map("is_duplicate")
+  mergedIntoId  String?    @map("merged_into_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  assignedTo    User?          @relation("AssignedAgent", fields: [assignedToId], references: [id])
+  mergedInto    Lead?          @relation("MergedLeads", fields: [mergedIntoId], references: [id])
+  mergedLeads   Lead[]         @relation("MergedLeads")
+  conversations Conversation[]
+  aiScores      AiScore[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([stage])
+  @@index([scoreLabel])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model Conversation {
+  id         String             @id @default(uuid())
+  leadId     String             @map("lead_id")
+  channel    Channel
+  externalId String?            @map("external_id")
+  status     ConversationStatus @default(OPEN)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  lead     Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([leadId])
+  @@index([externalId])
+  @@index([channel])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(uuid())
+  conversationId String           @map("conversation_id")
+  direction      MessageDirection
+  content        String
+  contentType    String           @default("text") @map("content_type")
+  metadata       Json?
+  externalId     String?          @map("external_id")
+  sentAt         DateTime         @default(now()) @map("sent_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([sentAt])
+  @@map("messages")
+}
+
+model AiScore {
+  id         String     @id @default(uuid())
+  leadId     String     @map("lead_id")
+  score      Int
+  label      ScoreLabel
+  summary    String?
+  factors    Json?
+  triggerMsg String?    @map("trigger_msg")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("ai_scores")
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  keyHash   String    @unique @map("key_hash")
+  name      String
+  lastUsed  DateTime? @map("last_used")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  leadId    String?          @map("lead_id")
+  type      NotificationType
+  payload   Json
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model ChannelConfig {
+  id          String   @id @default(uuid())
+  channel     Channel  @unique
+  credentials Json
+  active      Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("channel_configs")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}

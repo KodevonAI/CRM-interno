@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.next/
+out/
+build/
+
+# Environment — NEVER commit secrets
+.env
+.env.local
+.env.production
+
+# Prisma
+packages/db/src/generated/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes (if mounted locally)
+docker/volumes/
+
+# pnpm lockfile during initial setup (remove this line after first pnpm install)
+# pnpm-lock.yaml

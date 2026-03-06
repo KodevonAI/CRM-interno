@@ -1,0 +1,57 @@
+version: '3.8'
+
+# ─── KodevonCRM — Infraestructura de desarrollo local ────────
+# Levanta solo DB, Redis y Ollama.
+# Los apps (backend/frontend/worker) corren con pnpm dev en el host.
+#
+# Uso:
+#   docker compose -f docker/docker-compose.dev.yml up -d
+#   docker exec kodevon-ollama ollama pull llama3.2:3b
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kodevon-db
+    environment:
+      POSTGRES_DB: kodevoncrm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: kodevon-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kodevon-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:

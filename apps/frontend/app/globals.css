@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    @apply border-surface-border;
+  }
+
+  body {
+    @apply bg-surface text-white antialiased;
+  }
+
+  :root {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-raised border border-surface-border rounded-lg p-4;
+  }
+
+  .btn-primary {
+    @apply bg-brand hover:bg-brand-hover text-white font-medium px-4 py-2 rounded transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply text-gray-400 hover:text-white hover:bg-surface-overlay px-3 py-2 rounded transition-colors duration-150;
+  }
+
+  .input {
+    @apply bg-surface-overlay border border-surface-border text-white placeholder-gray-500
+           rounded px-3 py-2 w-full focus:outline-none focus:border-brand transition-colors duration-150;
+  }
+
+  .badge-cold {
+    @apply bg-gray-700 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-warm {
+    @apply bg-amber-900/50 text-amber-400 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-hot {
+    @apply bg-red-900/50 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+}

@@ -1,0 +1,4 @@
+# Normalizar line endings — LF en repo, conversión automática en Windows
+* text=auto eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
