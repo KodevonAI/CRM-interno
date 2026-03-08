@@ -13,7 +13,6 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
-# Copiar node_modules de root Y de cada package que tiene binarios
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
