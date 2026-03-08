@@ -30,10 +30,18 @@ ENV NODE_ENV=production
 
 RUN apk add --no-cache wget
 
-COPY --from=builder /app/apps/backend/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+# Servidor compilado
+COPY --from=builder /app/apps/backend/dist         ./dist
+COPY --from=builder /app/node_modules              ./node_modules
 COPY --from=builder /app/apps/backend/package.json ./package.json
+
+# Schema + migraciones — necesario para prisma migrate deploy al arrancar
+COPY --from=builder /app/packages/db/prisma        ./prisma
+
+# Entrypoint: corre migraciones y luego inicia el servidor
+COPY apps/backend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3001
 
-CMD ["node", "dist/index.js"]
+CMD ["sh", "./entrypoint.sh"]
