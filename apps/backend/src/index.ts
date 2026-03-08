@@ -15,6 +15,7 @@ import messagesRoutes       from './routes/messages'
 import inboxRoutes          from './routes/inbox'
 import notificationsRoutes  from './routes/notifications'
 import pushRoutes           from './routes/push'
+import publicRoutes         from './routes/public'
 import { initRealtime }     from './lib/realtime'
 
 const app = Fastify({
@@ -75,6 +76,7 @@ const start = async () => {
   await app.register(inboxRoutes,         { prefix: '/api/inbox' })
   await app.register(notificationsRoutes, { prefix: '/api/notifications' })
   await app.register(pushRoutes,          { prefix: '/api/push' })
+  await app.register(publicRoutes,        { prefix: '/api/public' })
   await app.register(metaWebhook,         { prefix: '/webhooks' })
 
   // ─── 404 handler ──────────────────────────────────────────────
