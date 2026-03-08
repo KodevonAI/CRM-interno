@@ -15,7 +15,6 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules 2>/dev/null || true
 COPY . .
 # Usar npx garantiza que prisma se encuentre sin importar dónde está instalado

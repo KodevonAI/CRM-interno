@@ -15,7 +15,6 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # npx garantiza que prisma se encuentre
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
