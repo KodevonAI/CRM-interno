@@ -24,27 +24,36 @@
   }
 
   .btn-primary {
-    @apply bg-brand hover:bg-brand-hover text-white font-medium px-4 py-2 rounded transition-colors duration-150;
+    @apply inline-flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white
+           font-medium px-4 py-2 rounded transition-colors duration-150 disabled:opacity-50
+           disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply text-gray-400 hover:text-white hover:bg-surface-overlay px-3 py-2 rounded transition-colors duration-150;
+    @apply inline-flex items-center gap-1.5 text-gray-400 hover:text-white
+           hover:bg-surface-overlay px-3 py-2 rounded transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .input {
     @apply bg-surface-overlay border border-surface-border text-white placeholder-gray-500
-           rounded px-3 py-2 w-full focus:outline-none focus:border-brand transition-colors duration-150;
+           rounded px-3 py-2 w-full focus:outline-none focus:border-brand
+           transition-colors duration-150;
+  }
+
+  .badge {
+    @apply inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full;
   }
 
   .badge-cold {
-    @apply bg-gray-700 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-gray-700 text-gray-300;
   }
 
   .badge-warm {
-    @apply bg-amber-900/50 text-amber-400 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-amber-900/50 text-amber-400;
   }
 
   .badge-hot {
-    @apply bg-red-900/50 text-red-400 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-red-900/50 text-red-400;
   }
 }

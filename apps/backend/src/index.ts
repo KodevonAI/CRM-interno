@@ -11,7 +11,9 @@ import apiKeysRoutes from './routes/api-keys'
 import espocrmRoutes   from './routes/espocrm'
 import metaWebhook    from './routes/webhooks/meta'
 import gmailAuthRoutes from './routes/gmail-auth'
-import messagesRoutes  from './routes/messages'
+import messagesRoutes       from './routes/messages'
+import inboxRoutes          from './routes/inbox'
+import notificationsRoutes  from './routes/notifications'
 
 const app = Fastify({
   logger: {
@@ -68,7 +70,9 @@ const start = async () => {
   await app.register(espocrmRoutes,   { prefix: '/api/espocrm' })
   await app.register(gmailAuthRoutes, { prefix: '/api/auth' })
   await app.register(messagesRoutes,  { prefix: '/api/messages' })
-  await app.register(metaWebhook,     { prefix: '/webhooks' })
+  await app.register(inboxRoutes,         { prefix: '/api/inbox' })
+  await app.register(notificationsRoutes, { prefix: '/api/notifications' })
+  await app.register(metaWebhook,         { prefix: '/webhooks' })
 
   // ─── 404 handler ──────────────────────────────────────────────
   app.setNotFoundHandler((_req, reply) => {
