@@ -3,12 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.14.2",
-  "dependencies": {
-    "@prisma/client": "^5.22.0"
-  },
-  "devDependencies": {
-    "prisma": "^5.22.0"
-  },
   "scripts": {
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",

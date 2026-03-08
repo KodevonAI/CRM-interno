@@ -14,7 +14,7 @@ COPY packages/db/package.json   ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
 # --no-frozen-lockfile para que pnpm descargue los binarios nativos
 # correctos para linux-musl (alpine) independiente del SO donde se generó el lock
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --shamefully-hoist
 
 # ─── 2. Build ────────────────────────────────────────────────
 FROM base AS builder

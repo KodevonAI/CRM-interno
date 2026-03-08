@@ -11,7 +11,7 @@ COPY package.json pnpm-workspace.yaml ./
 COPY apps/worker/package.json    ./apps/worker/
 COPY packages/db/package.json    ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --shamefully-hoist
 
 # ─── 2. Build ────────────────────────────────────────────────
 FROM base AS builder
