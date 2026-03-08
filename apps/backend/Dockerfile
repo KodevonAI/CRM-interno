@@ -21,8 +21,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Generar cliente Prisma en node_modules/.prisma/client (según output del schema)
-# Usamos el binario de la raíz — es el que pnpm siempre crea
+# Generar cliente Prisma (prisma está en root devDependencies → node_modules/.bin/prisma)
 RUN node_modules/.bin/prisma generate --schema=./packages/db/prisma/schema.prisma
 # Compilar TypeScript → dist/
 RUN pnpm --filter backend build
