@@ -1,0 +1,35 @@
+# Dependencies — never copy local node_modules into image
+# (they get installed fresh in the deps stage for linux/alpine)
+node_modules
+**/node_modules
+
+# Build outputs
+**/dist
+**/.next
+**/build
+
+# Git
+.git
+.gitignore
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode
+.idea
+*.DS_Store
+Thumbs.db
+
+# Logs
+**/*.log
+**/npm-debug.log*
+
+# Test artifacts
+**/coverage
+**/.nyc_output
+
+# Docker
+**/*.dockerignore
