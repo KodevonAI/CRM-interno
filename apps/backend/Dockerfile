@@ -1,4 +1,3 @@
-# Build context: monorepo root
 FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -10,13 +9,12 @@ COPY package.json pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-# Instala TODO para tener el binario prisma disponible
 RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# npx garantiza que prisma se encuentre
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 RUN pnpm --filter backend build
 
