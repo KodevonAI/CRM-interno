@@ -2,15 +2,17 @@
 # Ejecutar una sola vez después del primer despliegue:
 #   docker exec <ollama_container_name> sh /init-ollama.sh
 #
-# O directamente:
-#   docker compose -f docker/docker-compose.prod.yml exec ollama ollama pull llama3.2:3b
+# El modelo se toma de la variable de entorno OLLAMA_MODEL (default: llama3.2:3b).
+# Puedes cambiarlo desde EasyPanel → Environment → OLLAMA_MODEL=<modelo>
 
 set -e
 
-echo "[ollama] Pulling llama3.2:3b (~2GB, puede tardar varios minutos)..."
-ollama pull llama3.2:3b
+MODEL="${OLLAMA_MODEL:-llama3.2:3b}"
+
+echo "[ollama] Pulling ${MODEL} (puede tardar varios minutos)..."
+ollama pull "${MODEL}"
 
 echo "[ollama] Verificando modelo..."
 ollama list
 
-echo "[ollama] Listo. El modelo esta disponible para scoring de leads."
+echo "[ollama] Listo. El modelo ${MODEL} esta disponible para scoring de leads."

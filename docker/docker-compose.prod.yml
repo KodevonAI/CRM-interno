@@ -18,7 +18,7 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: apps/frontend/Dockerfile
     environment:
       NODE_ENV: production
@@ -118,13 +118,16 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    environment:
+      # Modelo a usar — editable desde EasyPanel → Environment
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     volumes:
       - ollama_data:/root/.ollama
     networks:
       - internal
-    # RAM limit: 3GB para llama3.2:3b dejando margen al resto del stack
-    mem_limit: 3g
-    memswap_limit: 3g
+    # RAM limit: ajustar si cambias a un modelo más grande
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    memswap_limit: ${OLLAMA_MEM_LIMIT:-3g}
     restart: unless-stopped
 
 volumes:
