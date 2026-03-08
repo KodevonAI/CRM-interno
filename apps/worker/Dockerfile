@@ -7,11 +7,11 @@ RUN corepack enable && apk add --no-cache openssl
 # ─── 1. Instalar dependencias ────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml .npmrc ./
 COPY apps/worker/package.json    ./apps/worker/
 COPY packages/db/package.json    ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist
+RUN pnpm install --no-frozen-lockfile
 
 # ─── 2. Build ────────────────────────────────────────────────
 FROM base AS builder

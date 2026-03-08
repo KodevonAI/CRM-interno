@@ -8,13 +8,13 @@ RUN corepack enable && apk add --no-cache wget openssl
 FROM base AS deps
 WORKDIR /app
 # Copiar manifests de todos los paquetes que necesita el backend
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml .npmrc ./
 COPY apps/backend/package.json  ./apps/backend/
 COPY packages/db/package.json   ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-# --no-frozen-lockfile para que pnpm descargue los binarios nativos
-# correctos para linux-musl (alpine) independiente del SO donde se generó el lock
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist
+# node-linker=hoisted (en .npmrc) crea directorios reales en vez de symlinks
+# → @prisma/client resuelve rutas relativas correctamente
+RUN pnpm install --no-frozen-lockfile
 
 # ─── 2. Build ────────────────────────────────────────────────
 FROM base AS builder
