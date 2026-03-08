@@ -77,11 +77,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 const API_BASE  = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(base64)
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
+  return new Uint8Array(Array.from(raw).map((c) => c.charCodeAt(0)))
 }
 
 async function registerPush(): Promise<void> {
