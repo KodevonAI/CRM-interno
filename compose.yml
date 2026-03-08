@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - easypanel
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=easypanel"
+      - "traefik.http.routers.crm-frontend.rule=Host(`${DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/webhooks`)"
+      - "traefik.http.routers.crm-frontend.entrypoints=websecure"
+      - "traefik.http.routers.crm-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-frontend.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/kodevoncrm
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ESPOCRM_URL: ${ESPOCRM_URL}
+      ESPOCRM_API_KEY: ${ESPOCRM_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - easypanel
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=easypanel"
+      - "traefik.http.routers.crm-backend.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/webhooks`))"
+      - "traefik.http.routers.crm-backend.entrypoints=websecure"
+      - "traefik.http.routers.crm-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.crm-backend.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/kodevoncrm
+      REDIS_URL: redis://redis:6379
+      OLLAMA_URL: http://ollama:11434
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - internal
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kodevoncrm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+    mem_limit: 3g
+    memswap_limit: 3g
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+networks:
+  easypanel:
+    external: true
+  internal:
+    driver: bridge
