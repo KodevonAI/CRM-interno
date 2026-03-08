@@ -13,7 +13,9 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
+# Copiar node_modules de root Y de cada package que tiene binarios
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY . .
 RUN ./packages/db/node_modules/.bin/prisma generate --schema=./packages/db/prisma/schema.prisma
