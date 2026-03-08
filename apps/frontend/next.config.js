@@ -5,7 +5,8 @@ const nextConfig = {
 
   // Exponer variables de entorno al cliente
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    NEXT_PUBLIC_API_URL:          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '',
   },
 
   // Optimizaciones de imagen (dominios externos si se agregan avatares, etc.)

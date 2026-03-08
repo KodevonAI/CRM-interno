@@ -14,6 +14,8 @@ import gmailAuthRoutes from './routes/gmail-auth'
 import messagesRoutes       from './routes/messages'
 import inboxRoutes          from './routes/inbox'
 import notificationsRoutes  from './routes/notifications'
+import pushRoutes           from './routes/push'
+import { initRealtime }     from './lib/realtime'
 
 const app = Fastify({
   logger: {
@@ -72,6 +74,7 @@ const start = async () => {
   await app.register(messagesRoutes,  { prefix: '/api/messages' })
   await app.register(inboxRoutes,         { prefix: '/api/inbox' })
   await app.register(notificationsRoutes, { prefix: '/api/notifications' })
+  await app.register(pushRoutes,          { prefix: '/api/push' })
   await app.register(metaWebhook,         { prefix: '/webhooks' })
 
   // ─── 404 handler ──────────────────────────────────────────────
@@ -92,6 +95,8 @@ const start = async () => {
   // ─── Start ────────────────────────────────────────────────────
   try {
     const port = Number(process.env.PORT) || 3001
+    await app.ready()
+    initRealtime(app)
     await app.listen({ port, host: '0.0.0.0' })
   } catch (err) {
     app.log.error(err)

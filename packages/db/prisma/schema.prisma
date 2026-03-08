@@ -72,10 +72,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  assignedLeads Lead[]         @relation("AssignedAgent")
-  apiKeys       ApiKey[]
-  notifications Notification[]
-  refreshTokens RefreshToken[]
+  assignedLeads     Lead[]             @relation("AssignedAgent")
+  apiKeys           ApiKey[]
+  notifications     Notification[]
+  refreshTokens     RefreshToken[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -219,4 +220,18 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

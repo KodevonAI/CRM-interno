@@ -1,6 +1,7 @@
 import type { Job } from 'bullmq'
 import type { NotifyPayload } from '@kodevon/shared'
 import { prisma } from '../lib/prisma'
+import { publisher } from '../lib/publisher'
 
 export async function handleNotify(job: Job<NotifyPayload>): Promise<void> {
   const { type, leadId, targetUserIds, payload } = job.data
@@ -32,5 +33,9 @@ export async function handleNotify(job: Job<NotifyPayload>): Promise<void> {
 
   console.log(`[notify] ${type} → ${userIds.length} usuario(s)${leadId ? ` | lead: ${leadId}` : ''}`)
 
-  // TODO Fase 8: enviar Web Push + email + sonido in-app via Socket.io
+  // Fase 8: publicar en Redis → backend emite via Socket.io + Web Push
+  await publisher.publish(
+    'crm:notifications',
+    JSON.stringify({ userIds, type, leadId: leadId ?? null, payload }),
+  )
 }
