@@ -1,6 +1,6 @@
 # KodevonCRM — Contexto Completo del Proyecto
 
-> Documento actualizado el 2026-03-06. Cubre todas las fases completadas: 1 al 7 inclusive.
+> Documento actualizado el 2026-03-08. Cubre todas las fases completadas: 1 al 10 inclusive.
 
 ---
 
@@ -1394,9 +1394,9 @@ ESPOCRM_API_KEY=   ← EspoCRM Admin → API Keys → generar nueva
 | 5 | Worker handlers: inbound-message, espocrm-sync, gmail-poll, ai-score, ai-summary | ✅ Completa |
 | 6 | Dedup check + notify handler + tipos de notificaciones | ✅ Completa |
 | 7 | Frontend completo: login, inbox con chat, leads tabla+pipeline, detail, settings | ✅ Completa |
-| 8 | Notificaciones real-time: Web Push API + Socket.io + sonido in-app | ⏳ Pendiente |
-| 9 | API HTTP pública: endpoint para leads desde sistemas externos con API key | ⏳ Pendiente |
-| 10 | Widget formulario web embebible (script JS + endpoint) | ⏳ Pendiente |
+| 8 | Notificaciones real-time: Web Push API + Socket.io + sonido in-app | ✅ Completa |
+| 9 | API HTTP pública: endpoint para leads desde sistemas externos con API key | ✅ Completa |
+| 10 | Widget formulario web embebible (script JS + endpoint) | ✅ Completa |
 
 ---
 
@@ -1460,4 +1460,4 @@ ESPOCRM_API_KEY=   ← EspoCRM Admin → API Keys → generar nueva
 ---
 
 *Documento mantenido por Claude Code — actualizado en cada fase completada.*
-*Última actualización: Fase 7 — Frontend completo.*
+*Última actualización: Fase 10 — Widget formulario embebible. Proyecto 100% completo.*
