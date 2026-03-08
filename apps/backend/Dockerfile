@@ -2,7 +2,7 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && apk add --no-cache wget
+RUN corepack enable && apk add --no-cache wget openssl
 
 # ─── 1. Instalar dependencias ────────────────────────────────
 FROM base AS deps
@@ -21,7 +21,9 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Generar cliente Prisma (prisma está en root devDependencies → node_modules/.bin/prisma)
+# Generar cliente Prisma
+# PRISMA_GENERATE_SKIP_AUTOINSTALL evita que prisma intente hacer `pnpm add @prisma/client`
+ENV PRISMA_GENERATE_SKIP_AUTOINSTALL=true
 RUN node_modules/.bin/prisma generate --schema=./packages/db/prisma/schema.prisma
 # Compilar TypeScript → dist/
 RUN pnpm --filter backend build
@@ -30,7 +32,7 @@ RUN pnpm --filter backend build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache wget
+RUN apk add --no-cache wget openssl
 
 # Servidor compilado
 COPY --from=builder /app/apps/backend/dist         ./dist
