@@ -7,4 +7,5 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   noExternal: ['@kodevon/shared', '@kodevon/db'],
+  external: ['@prisma/client', '.prisma/client'],
 })

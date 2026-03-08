@@ -13,7 +13,6 @@ RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
-# Copiar node_modules de root Y de cada package que tiene binarios
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
@@ -26,5 +25,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/apps/worker/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma   # ← NUEVA LÍNEA AQUÍ
 COPY --from=builder /app/apps/worker/package.json ./package.json
 CMD ["node", "dist/index.js"]
