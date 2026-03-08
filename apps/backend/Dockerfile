@@ -13,7 +13,7 @@ COPY package.json pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --filter backend... --no-frozen-lockfile
+RUN pnpm install --filter backend... --filter @kodevon/db --no-frozen-lockfile
 
 # ─── Build ───────────────────────────────────────────────────
 FROM base AS builder

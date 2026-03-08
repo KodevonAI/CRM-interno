@@ -10,7 +10,7 @@ COPY package.json pnpm-workspace.yaml ./
 COPY apps/worker/package.json ./apps/worker/
 COPY packages/db/package.json ./packages/db/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --filter worker... --no-frozen-lockfile
+RUN pnpm install --filter worker... --filter @kodevon/db --no-frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
