@@ -14,8 +14,9 @@ RUN pnpm install --no-frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY . .
-RUN cd packages/db && pnpm exec prisma generate
+RUN ./packages/db/node_modules/.bin/prisma generate --schema=./packages/db/prisma/schema.prisma
 RUN pnpm --filter worker build
 
 FROM node:20-alpine AS runner
