@@ -1,4 +1,6 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const ACCESS_TOKEN_KEY = 'kodevon-access-token'
+let accessToken: string | null = null
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -7,66 +9,133 @@ class ApiError extends Error {
   }
 }
 
+function getStoredAccessToken() {
+  if (accessToken) return accessToken
+  if (typeof window === 'undefined') return null
+  accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY)
+  return accessToken
+}
+
+function setStoredAccessToken(token: string | null) {
+  accessToken = token
+  if (typeof window === 'undefined') return
+  if (token) {
+    window.localStorage.setItem(ACCESS_TOKEN_KEY, token)
+    return
+  }
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+}
+
+function parseApiBody<T>(body: unknown): T {
+  if (!body || typeof body !== 'object') return body as T
+  if ('success' in body) {
+    const response = body as { success: boolean; data?: unknown; error?: string }
+    if (!response.success) {
+      throw new ApiError(400, response.error ?? 'Request failed')
+    }
+    return response.data as T
+  }
+  return body as T
+}
+
+function getErrorMessage(body: unknown, fallback: string) {
+  if (!body || typeof body !== 'object') return fallback
+  const errorBody = body as { error?: string; message?: string }
+  return errorBody.error ?? errorBody.message ?? fallback
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const headers = new Headers(options.headers ?? {})
+  if (!headers.has('Content-Type') && options.body) {
+    headers.set('Content-Type', 'application/json')
+  }
+  const token = getStoredAccessToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
 
-  if (res.status === 401) {
+  const canRefresh = path !== '/api/auth/login' && path !== '/api/auth/refresh'
+
+  if (res.status === 401 && canRefresh) {
     // Try refresh
     const refreshed = await fetch(`${BASE}/api/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     })
     if (!refreshed.ok) {
+      setStoredAccessToken(null)
       // Redirect to login
       if (typeof window !== 'undefined') window.location.href = '/login'
       throw new ApiError(401, 'Session expired')
     }
+    const refreshedBody = await refreshed.json().catch(() => undefined)
+    const refreshedData = parseApiBody<{ accessToken: string }>(refreshedBody)
+    if (refreshedData?.accessToken) {
+      setStoredAccessToken(refreshedData.accessToken)
+    }
+
+    const retryHeaders = new Headers(options.headers ?? {})
+    if (!retryHeaders.has('Content-Type') && options.body) {
+      retryHeaders.set('Content-Type', 'application/json')
+    }
+    const newToken = getStoredAccessToken()
+    if (newToken) retryHeaders.set('Authorization', `Bearer ${newToken}`)
+
     // Retry original
     const retry = await fetch(`${BASE}${path}`, {
       ...options,
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: retryHeaders,
     })
     if (!retry.ok) {
       const body = await retry.json().catch(() => ({}))
-      throw new ApiError(retry.status, body.message ?? retry.statusText)
+      throw new ApiError(retry.status, getErrorMessage(body, retry.statusText))
     }
-    return retry.json()
+    if (retry.status === 204) return undefined as T
+    const retryBody = await retry.json().catch(() => undefined)
+    return parseApiBody<T>(retryBody)
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new ApiError(res.status, body.message ?? res.statusText)
+    throw new ApiError(res.status, getErrorMessage(body, res.statusText))
   }
 
   if (res.status === 204) return undefined as T
-  return res.json()
+  const body = await res.json().catch(() => undefined)
+  return parseApiBody<T>(body)
 }
 
 // ─── Auth ────────────────────────────────────────────────────
 
 export const api = {
   auth: {
-    login: (email: string, password: string) =>
-      request<{ user: User; accessToken: string }>('/api/auth/login', {
+    login: async (email: string, password: string) => {
+      const session = await request<{ user: User; accessToken: string }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
-      }),
-    logout: () => request('/api/auth/logout', { method: 'POST' }),
-    me: () => request<{ user: User }>('/api/auth/me'),
+      })
+      setStoredAccessToken(session.accessToken)
+      return session
+    },
+    logout: async () => {
+      try {
+        await request('/api/auth/logout', { method: 'POST' })
+      } finally {
+        setStoredAccessToken(null)
+      }
+    },
+    me: async () => {
+      const user = await request<User>('/api/auth/me')
+      return { user }
+    },
   },
 
   leads: {
@@ -74,16 +143,33 @@ export const api = {
       const q = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
       return request<PaginatedResponse<Lead>>(`/api/leads${q}`)
     },
-    get: (id: string) => request<{ lead: Lead }>(`/api/leads/${id}`),
-    create: (data: Partial<Lead>) =>
-      request<{ lead: Lead }>('/api/leads', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Lead>) =>
-      request<{ lead: Lead }>(`/api/leads/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    get: async (id: string) => {
+      const lead = await request<Lead>(`/api/leads/${id}`)
+      return { lead }
+    },
+    create: async (data: Partial<Lead>) => {
+      const lead = await request<Lead>('/api/leads', { method: 'POST', body: JSON.stringify(data) })
+      return { lead }
+    },
+    update: async (id: string, data: Partial<Lead>) => {
+      const lead = await request<Lead>(`/api/leads/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+      return { lead }
+    },
     delete: (id: string) => request(`/api/leads/${id}`, { method: 'DELETE' }),
-    assign: (id: string, userId: string) =>
-      request<{ lead: Lead }>(`/api/leads/${id}/assign`, { method: 'POST', body: JSON.stringify({ userId }) }),
-    merge: (id: string, duplicateId: string) =>
-      request<{ lead: Lead }>(`/api/leads/${id}/merge`, { method: 'POST', body: JSON.stringify({ duplicateLeadId: duplicateId }) }),
+    assign: async (id: string, userId: string) => {
+      const lead = await request<Lead>(`/api/leads/${id}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({ agentId: userId || null }),
+      })
+      return { lead }
+    },
+    merge: async (id: string, duplicateId: string) => {
+      const lead = await request<Lead>(`/api/leads/${id}/merge`, {
+        method: 'POST',
+        body: JSON.stringify({ duplicateId }),
+      })
+      return { lead }
+    },
   },
 
   inbox: {
@@ -96,8 +182,10 @@ export const api = {
   messages: {
     list: (conversationId: string) =>
       request<{ messages: Message[] }>(`/api/messages/${conversationId}`),
-    send: (data: SendMessagePayload) =>
-      request<{ message: Message }>('/api/messages/send', { method: 'POST', body: JSON.stringify(data) }),
+    send: async (data: SendMessagePayload) => {
+      const message = await request<Message>('/api/messages/send', { method: 'POST', body: JSON.stringify(data) })
+      return { message }
+    },
   },
 
   notifications: {
@@ -108,9 +196,14 @@ export const api = {
   },
 
   users: {
-    list: () => request<{ users: User[] }>('/api/users'),
-    update: (id: string, data: Partial<User>) =>
-      request<{ user: User }>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    list: async () => {
+      const users = await request<User[]>('/api/users')
+      return { users }
+    },
+    update: async (id: string, data: Partial<User>) => {
+      const user = await request<User>(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+      return { user }
+    },
   },
 
   espocrm: {

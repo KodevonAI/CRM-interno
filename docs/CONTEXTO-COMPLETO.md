@@ -1,6 +1,6 @@
 # KodevonCRM — Contexto Completo del Proyecto
 
-> Documento actualizado el 2026-03-08. Cubre todas las fases completadas: 1 al 10 inclusive.
+> Documento actualizado el 2026-03-08. Cubre todas las fases completadas: 1 al 10, más la resolución completa de los errores de despliegue en EasyPanel.
 
 ---
 
@@ -1271,55 +1271,81 @@ curl -X POST http://localhost:3001/api/auth/login \
 
 ## 18. Guía de despliegue en producción (EasyPanel)
 
-### Prerrequisitos
-1. Repositorio subido a GitHub.
-2. EasyPanel instalado en el VPS con Docker.
-3. DNS de `crm.kodevon.com` apuntando al VPS.
-4. `.env` de producción listo con todos los secrets.
-5. Contener EspoCRM existente en el mismo Docker (nombre de red conocido).
+### Cómo funciona el despliegue
+- EasyPanel toma el archivo **`compose.yml`** de la raíz del repo (NO `docker/docker-compose.prod.yml`)
+- EasyPanel clona el repo del GitHub conectado y corre `docker compose up --build -d`
+- El contexto de build es la **raíz del repo** para todos los servicios
+- Las variables de entorno se configuran directamente en el panel de EasyPanel (no se usa `.env` en producción)
 
-### Variables de entorno clave para producción
-```env
-NODE_ENV=production
-FRONTEND_URL=https://crm.kodevon.com
-NEXT_PUBLIC_API_URL=https://crm.kodevon.com
-DATABASE_URL=postgresql://postgres:<PASS>@kodevon-db:5432/kodevoncrm
-REDIS_URL=redis://kodevon-redis:6379
-OLLAMA_URL=http://kodevon-ollama:11434
-ESPOCRM_URL=http://<nombre-contenedor-espocrm>:80
+### Variables de entorno en EasyPanel (requeridas)
+```
+DOMAIN=crm.kodevon.com
+POSTGRES_PASSWORD=<password seguro>
+JWT_SECRET=<64+ chars random>
+COOKIE_SECRET=<64+ chars random, diferente al anterior>
+ENCRYPTION_KEY=<64 hex chars>
 ```
 
-### Pasos
+### Variables de entorno en EasyPanel (opcionales — dejar vacías si no se usan aún)
+```
+ESPOCRM_URL=
+ESPOCRM_API_KEY=
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_EMAIL=
+WA_PHONE_NUMBER_ID=
+WA_ACCESS_TOKEN=
+WA_WEBHOOK_VERIFY_TOKEN=
+META_APP_SECRET=
+META_PAGE_ID=
+META_PAGE_ACCESS_TOKEN=
+META_IG_ACCOUNT_ID=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_EMAIL=mailto:admin@kodevon.com
+OLLAMA_MODEL=llama3.2:3b
+```
 
+### Después del primer deploy exitoso
+
+**1. Crear usuario admin (OBLIGATORIO antes de poder entrar):**
+En EasyPanel → servicio backend → pestaña Console/Terminal:
+```sh
+node dist/scripts/seed.js
+```
+Crea: `admin@kodevon.com` / `KodevonCRM@2024!` (cambiar inmediatamente)
+
+**2. Descargar modelo Ollama** (puede tardar varios minutos, ~2GB):
+En EasyPanel → servicio ollama → Console:
+```sh
+ollama pull llama3.2:3b
+```
+
+**3. Generar VAPID keys** (para Web Push — opcional):
 ```bash
-# En el VPS, clonar el repo
-git clone https://github.com/<tu-org>/CRM-interno.git
-cd CRM-interno
-
-# Copiar y editar .env de producción
-cp .env.example .env
-nano .env  # completar todos los valores
-
-# Crear app en EasyPanel → tipo "Docker Compose"
-# Apuntar al archivo: docker/docker-compose.prod.yml
-# O ejecutar directamente:
-docker compose -f docker/docker-compose.prod.yml up -d --build
-
-# Correr migraciones en el contenedor backend
-docker exec crm-backend npx prisma migrate deploy
-
-# Crear admin inicial
-docker exec crm-backend node dist/scripts/seed.js
-
-# Descargar modelo Ollama en el contenedor (~2GB)
-docker exec crm-ollama ollama pull llama3.2:3b
+node -e "const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log(JSON.stringify(k))"
 ```
+Agregar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` en EasyPanel y redeploy.
+
+### Healthcheck y startup del backend
+- El backend corre `prisma db push` en el entrypoint antes de iniciar el servidor
+- El healthcheck tiene `start_period: 60s` para darle tiempo (sin este parámetro el container se marcaba unhealthy prematuramente)
+- El backend es saludable cuando responde `GET /api/health → { status: "ok" }`
+- El frontend tiene `depends_on: backend: condition: service_healthy` → espera a que backend esté listo
+
+### Cómo acceder al CRM tras el deploy
+URL: `https://crm.kodevon.com`
+Si el indicador de EasyPanel aparece gris (no verde), significa que el contenedor está detenido:
+1. En EasyPanel → seleccionar el servicio → botón **Start** o **Restart**
+2. Si el frontend está gris tras un deploy exitoso del backend: hacer **Redeploy** desde EasyPanel
 
 ### Red Traefik en EasyPanel
-- EasyPanel usa la red externa `easypanel` para Traefik.
-- Los labels del `docker-compose.prod.yml` ya están configurados para `crm.kodevon.com`.
-- SSL se gestiona automáticamente via Let's Encrypt.
-- Backend expuesto en `/api` y `/webhooks`. Frontend en `/`.
+- EasyPanel usa la red externa `easypanel` para Traefik
+- Los labels en `compose.yml` ya están configurados para `crm.kodevon.com`
+- SSL se gestiona automáticamente via Let's Encrypt
+- Routing:
+  - Backend: `/api/*`, `/webhooks/*`, `/socket.io/*`
+  - Frontend: todo lo demás
 
 ---
 
@@ -1459,5 +1485,85 @@ ESPOCRM_API_KEY=   ← EspoCRM Admin → API Keys → generar nueva
 
 ---
 
+---
+
+## 23. Configuración Docker — Decisiones y fixes críticos
+
+### Problema Prisma + pnpm + Docker (resuelto)
+
+pnpm usa symlinks hacia un virtual store (`node_modules/.pnpm/`) en lugar de directorios reales. Esto causa que cuando `@prisma/client` resuelve su cliente generado con rutas relativas (`../../.prisma/client`), Node.js sigue el symlink hasta el store y busca los archivos en un path incorrecto.
+
+**Solución**: `.npmrc` en la raíz con `node-linker=hoisted`. Esto hace que pnpm cree directorios reales (como npm/yarn) en vez de symlinks. Con esto, `node_modules/@prisma/client/` es un directorio real y las rutas relativas se resuelven correctamente.
+
+### `.npmrc` (raíz del monorepo)
+```
+node-linker=hoisted
+shamefully-hoist=true
+```
+- `node-linker=hoisted`: directorios reales en node_modules (no symlinks)
+- `shamefully-hoist=true`: todos los binarios de todos los sub-paquetes del workspace llegan a `node_modules/.bin/`
+
+### Dockerfiles — patrón definitivo
+Ambos Dockerfiles (backend y worker) siguen el mismo patrón:
+
+```dockerfile
+# Stage deps: copiar .npmrc para que pnpm use node-linker=hoisted durante install
+COPY package.json pnpm-workspace.yaml .npmrc ./
+COPY apps/<app>/package.json ./apps/<app>/
+COPY packages/db/package.json ./packages/db/
+COPY packages/shared/package.json ./packages/shared/
+RUN pnpm install --no-frozen-lockfile
+
+# Stage builder:
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV PRISMA_GENERATE_SKIP_AUTOINSTALL=true
+RUN node_modules/.bin/prisma generate --schema=./packages/db/prisma/schema.prisma
+RUN pnpm --filter <app> build
+
+# Stage runner:
+# Copiar solo lo necesario para producción
+```
+
+### Variables de entorno en el builder
+- `PRISMA_GENERATE_SKIP_AUTOINSTALL=true`: evita que `prisma generate` intente instalar `@prisma/client` automáticamente
+
+### OpenSSL en Alpine
+Prisma necesita OpenSSL para detectar la plataforma. Se agrega en el `base` stage:
+```dockerfile
+RUN corepack enable && apk add --no-cache wget openssl
+```
+También en el `runner` del backend (para `prisma db push` en el entrypoint).
+
+### Entrypoint del backend
+```sh
+#!/bin/sh
+set -e
+echo "[entrypoint] Aplicando schema a la base de datos..."
+node_modules/.bin/prisma db push \
+  --schema=./prisma/schema.prisma \
+  --skip-generate \
+  --accept-data-loss
+echo "[entrypoint] DB lista. Iniciando servidor..."
+exec node dist/index.js
+```
+- `prisma db push`: crea tablas si no existen, idempotente
+- `--skip-generate`: el cliente ya fue generado en el build
+- `--accept-data-loss`: previene prompt interactivo que congela el contenedor
+
+### Errores resueltos durante el despliegue inicial
+
+| Error | Causa | Fix |
+|-------|-------|-----|
+| `prisma: not found` | Binario no hoisteado al root | `.npmrc` con `shamefully-hoist=true` |
+| `Could not resolve @prisma/client` | pnpm symlinks, path incorrecto | `.npmrc` con `node-linker=hoisted` |
+| `@prisma/client did not initialize yet` | pnpm virtual store, path incorrecto en runtime | `node-linker=hoisted` crea dirs reales |
+| `tsup: not found` | Mismo problema de hoisting | Mismo fix |
+| Backend unhealthy prematuro | Faltaba `start_period: 60s` en healthcheck | Agregado en `compose.yml` |
+| OpenSSL warning → fallo | Alpine sin OpenSSL | `apk add openssl` en Dockerfile |
+| `pnpm add @prisma/client` durante generate | Prisma intentaba auto-instalar | `PRISMA_GENERATE_SKIP_AUTOINSTALL=true` |
+
+---
+
 *Documento mantenido por Claude Code — actualizado en cada fase completada.*
-*Última actualización: Fase 10 — Widget formulario embebible. Proyecto 100% completo.*
+*Última actualización: 2026-03-08 — Resolución completa de errores de despliegue en EasyPanel.*

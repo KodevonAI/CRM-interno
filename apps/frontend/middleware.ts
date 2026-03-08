@@ -11,7 +11,7 @@ export function middleware(req: NextRequest) {
   }
 
   // Check for auth cookie (httpOnly, set by backend)
-  const hasRefreshToken = req.cookies.has('refreshToken')
+  const hasRefreshToken = req.cookies.has('refresh_token')
   // Also check zustand persisted user in localStorage (not accessible in middleware)
   // We rely on the refresh token cookie as the auth signal
   if (!hasRefreshToken && !pathname.startsWith('/_next')) {

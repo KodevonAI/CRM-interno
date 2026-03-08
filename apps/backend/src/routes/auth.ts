@@ -18,7 +18,7 @@ function setRefreshCookie(reply: FastifyReply, token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    path: '/api/auth',
+    path: '/',
     maxAge: REFRESH_COOKIE_MAX_AGE,
   })
 }
@@ -92,7 +92,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     })
 
     if (!stored || stored.expiresAt < new Date() || !stored.user.isActive) {
-      reply.clearCookie('refresh_token', { path: '/api/auth' })
+      reply.clearCookie('refresh_token', { path: '/' })
       return reply.status(401).send({ success: false, error: 'Refresh token inválido o expirado' })
     }
 
@@ -130,7 +130,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         where: { tokenHash: hashToken(rawRefresh) },
       })
     }
-    reply.clearCookie('refresh_token', { path: '/api/auth' })
+    reply.clearCookie('refresh_token', { path: '/' })
     return reply.send({ success: true })
   })
 
