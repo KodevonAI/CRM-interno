@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { useAuthStore } from '../../../store/auth.store'
 
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const setUser  = useAuthStore((s) => s.setUser)
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
 
@@ -63,14 +65,24 @@ export default function LoginPage() {
 
           <div className="space-y-1">
             <label className="text-sm text-gray-400">Contraseña</label>
-            <input
-              type="password"
-              className="input w-full"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="input w-full pr-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-300 transition-colors"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <button
