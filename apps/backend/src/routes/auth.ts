@@ -13,13 +13,26 @@ function hashToken(raw: string) {
   return crypto.createHash('sha256').update(raw).digest('hex')
 }
 
+function getCookieDomain(): string | undefined {
+  const frontendUrl = process.env.FRONTEND_URL
+  if (!frontendUrl) return undefined
+  try {
+    const hostname = new URL(frontendUrl).hostname
+    // Si es un subdominio (crm.kodevon.com), retorna .kodevon.com para compartir entre subdominios
+    const parts = hostname.split('.')
+    if (parts.length >= 2) return '.' + parts.slice(-2).join('.')
+  } catch {}
+  return undefined
+}
+
 function setRefreshCookie(reply: FastifyReply, token: string) {
   reply.setCookie('refresh_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: REFRESH_COOKIE_MAX_AGE,
+    domain: getCookieDomain(),
   })
 }
 
@@ -92,7 +105,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     })
 
     if (!stored || stored.expiresAt < new Date() || !stored.user.isActive) {
-      reply.clearCookie('refresh_token', { path: '/' })
+      reply.clearCookie('refresh_token', { path: '/', domain: getCookieDomain() })
       return reply.status(401).send({ success: false, error: 'Refresh token inválido o expirado' })
     }
 
@@ -130,7 +143,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         where: { tokenHash: hashToken(rawRefresh) },
       })
     }
-    reply.clearCookie('refresh_token', { path: '/' })
+    reply.clearCookie('refresh_token', { path: '/', domain: getCookieDomain() })
     return reply.send({ success: true })
   })
 
