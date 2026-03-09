@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: https://${DOMAIN}
